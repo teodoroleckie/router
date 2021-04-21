@@ -1,6 +1,6 @@
 {
   "name": "tleckie/router",
-  "license": "LGPL-3.0-only",
+  "license": "MIT",
   "description": "Simple router PSR-7, PSR-17",
   "type": "library",
   "homepage": "https://github.com/teodoroleckie/router",
