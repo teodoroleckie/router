@@ -1,0 +1,48 @@
+{
+  "name": "tleckie/router",
+  "license": "LGPL-3.0-only",
+  "description": "Simple router",
+  "type": "library",
+  "homepage": "https://github.com/teodoroleckie/router",
+  "authors": [
+    {
+      "name": "Teodoro Leckie Westberg",
+      "email": "teodoroleckie@gmail.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Tleckie\\Router\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tleckie\\Router\\Tests\\": "tests/"
+    }
+  },
+  "provide": {
+
+  },
+  "require": {
+    "php": "^8",
+    "httpsoft/http-emitter": "^1.0",
+    "httpsoft/http-message": "^1.0",
+    "psr/http-factory": "^1.0",
+    "psr/log": "^1.1"
+  },
+  "require-dev": {
+    "infection/infection": "^0.21.5",
+    "phpunit/phpunit": "^9.5",
+    "mikey179/vfsstream": "^1.6",
+    "friendsofphp/php-cs-fixer": "v3.0.0-beta.2"
+  },
+  "config": {
+    "sort-packages": true,
+    "optimize-autoloader": true,
+    "vendor-dir": "vendor",
+    "bin-dir": "bin"
+  },
+  "scripts": {
+    "php-cs-fixer": "php-cs-fixer --rules=@PSR1"
+  }
+}
