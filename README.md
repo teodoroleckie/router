@@ -4,6 +4,11 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/tleckie/router.svg?style=flat-square)](https://packagist.org/packages/tleckie/router)
 
 
+You can install the package via composer:
+
+```bash
+composer require tleckie/router
+```
 
 ```php
 <?php
