@@ -1,4 +1,9 @@
 ### Router:
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/tleckie/router.svg?style=flat-square)](https://packagist.org/packages/tleckie/router)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/teodoroleckie/router/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/teodoroleckie/router/?branch=master)
+[![Total Downloads](https://img.shields.io/packagist/dt/tleckie/router.svg?style=flat-square)](https://packagist.org/packages/tleckie/router)
+
+
 
 ```php
 <?php
