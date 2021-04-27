@@ -17,10 +17,25 @@
   "mutators": {
     "@default": true,
     "IncrementInteger": {
-          "ignore": [
-              "Tleckie\\Router\\FindRoutes::matchRoute"
-          ]
-      }
+        "ignore": [
+            "Tleckie\\Router\\FindRoutes::matchRoute"
+        ]
+    },
+    "UnwrapArrayFilter": {
+        "ignore": [
+            "Tleckie\\Router\\MiddlewareDispatcher::withoutMiddleware"
+        ]
+    },
+    "UnwrapArrayReverse": {
+        "ignore": [
+            "Tleckie\\Router\\Router::handle"
+        ]
+    },
+    "InstanceOf_": {
+        "ignore": [
+            "Tleckie\\Router\\Router::createMiddlewareWithParams"
+        ]
+    }
   },
   "testFramework":"phpunit",
   "bootstrap": "./vendor/autoload.php"

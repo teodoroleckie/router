@@ -2,9 +2,10 @@
 
 namespace Tleckie\Router;
 
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Tleckie\Router\Exception\RouteNotFoundException;
+use function array_pop;
+use function is_numeric;
+use function preg_match_all;
 
 /**
  * Class FindRoutes
@@ -14,11 +15,8 @@ use Tleckie\Router\Exception\RouteNotFoundException;
  */
 class FindRoutes
 {
-    /** @var ServerRequestInterface */
-    private ServerRequestInterface $request;
-
-    /** @var ResponseInterface */
-    private ResponseInterface $response;
+    /** @var MiddlewareFactory */
+    private MiddlewareFactory $middlewareFactory;
 
     /** @var array */
     private array $routes;
@@ -26,18 +24,14 @@ class FindRoutes
     /**
      * FindRoutes constructor.
      *
-     * @param ServerRequestInterface $request
-     * @param ResponseInterface      $response
-     * @param array                  $routes
+     * @param MiddlewareFactory $middlewareFactory
+     * @param array             $routes
      */
     public function __construct(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
+        MiddlewareFactory $middlewareFactory,
         array $routes
-    )
-    {
-        $this->request = $request;
-        $this->response = $response;
+    ) {
+        $this->middlewareFactory = $middlewareFactory;
         $this->routes = $routes;
     }
 
@@ -49,9 +43,15 @@ class FindRoutes
      */
     public function find(string $method, string $path): Item
     {
-        foreach ($this->routes[$method] ?? [] as $pattern => $closure) {
-            if (null !== $value = $this->matchRoute($pattern, $path)) {
-                return new Item($closure, $value);
+        foreach ($this->routes[$method] ?? [] as $pattern => $closures) {
+            if (null !== $params = $this->matchRoute($pattern, $path)) {
+                $params = $this->removeIntegerKeyParam($params);
+
+                $closure = $this->extractClosure($closures);
+
+                $middlewares = $this->factorizeMiddleware($closures, $params);
+
+                return new Item($closure, $params, $middlewares);
             }
         }
 
@@ -66,14 +66,49 @@ class FindRoutes
     private function matchRoute(string $pattern, string $path): ?array
     {
         if (preg_match_all("#^{$pattern}$#", $path, $matches, PREG_SET_ORDER)) {
-            $params = array_slice($matches[0], 1) ?? [];
-            foreach ([$this->response, $this->request] as $item) {
-                array_unshift($params, $item);
-            }
-
-            return $params;
+            return $matches[0] ?? [];
         }
 
         return null;
+    }
+
+    /**
+     * @param array $params
+     * @return array
+     */
+    private function removeIntegerKeyParam(array $params): array
+    {
+        $returnParams = [];
+        foreach ($params as $paramKey => $paramValue) {
+            if (!is_numeric($paramKey)) {
+                $returnParams[$paramKey] = $paramValue;
+            }
+        }
+
+        return $returnParams;
+    }
+
+    /**
+     * @param array $closures
+     * @return Closure|callable
+     */
+    private function extractClosure(array &$closures): Closure|callable
+    {
+        return array_pop($closures);
+    }
+
+    /**
+     * @param array $closures
+     * @param array $params
+     * @return array
+     */
+    private function factorizeMiddleware(array $closures, array $params): array
+    {
+        $middleware = [];
+        foreach ($closures as $closure) {
+            $middleware[] = $this->middlewareFactory->create($closure, $params);
+        }
+
+        return $middleware;
     }
 }

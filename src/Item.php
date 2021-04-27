@@ -3,6 +3,11 @@
 namespace Tleckie\Router;
 
 use Closure;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use function array_unshift;
+use function call_user_func_array;
 
 /**
  * Class Item
@@ -18,32 +23,21 @@ class Item
     /** @var array */
     private array $params;
 
+    /** @var MiddlewareInterface[] */
+    private array $middlewares;
+
     /**
      * Item constructor.
      *
      * @param Closure|callable $callable
      * @param array            $params
+     * @param array            $middlewares
      */
-    public function __construct(Closure|callable $callable, array $params)
+    public function __construct(Closure|callable $callable, array $params, array $middlewares = [])
     {
         $this->closure = $callable;
-        $this->params = $this->clearParams($params);
-    }
-
-    /**
-     * @param array $params
-     * @return array
-     */
-    private function clearParams(array $params): array
-    {
-        $returnParams = [];
-        foreach ($params as $paramKey => $paramValue) {
-            if (is_numeric($paramKey)) {
-                $returnParams[$paramKey] = $paramValue;
-            }
-        }
-
-        return $returnParams;
+        $this->params = $params;
+        $this->middlewares = $middlewares;
     }
 
     /**
@@ -62,11 +56,22 @@ class Item
         return $this->closure;
     }
 
-    /**
-     * @return mixed
-     */
-    public function call(): mixed
+    public function middleware(): array
     {
-        return call_user_func_array($this->closure, $this->params);
+        return $this->middlewares;
+    }
+
+    /**
+     * @param ServerRequestInterface $request
+     * @param ResponseInterface      $response
+     * @return ResponseInterface
+     */
+    public function handle(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $params = [$this->params];
+
+        array_unshift($params, $request, $response);
+
+        return call_user_func_array($this->closure, $params);
     }
 }

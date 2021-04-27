@@ -14,7 +14,11 @@
             <directory suffix="Test.php">.</directory>
         </testsuite>
     </testsuites>
-
+    <groups>
+        <exclude>
+            <group>skip</group>
+        </exclude>
+    </groups>
     <coverage cacheDirectory=".phpunit.cache/code-coverage"
               processUncoveredFiles="true">
         <include>

@@ -2,10 +2,12 @@
 
 namespace Tleckie\Router;
 
+use Closure;
 use HttpSoft\Emitter\EmitterInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
+use Psr\Http\Server\MiddlewareInterface;
 use Tleckie\Router\Exception\RouteNotFoundException;
 
 /**
@@ -27,7 +29,7 @@ class Router
         'PUT',
     ];
 
-    /** @var array[string][string][Closure] */
+    /** @var array[] */
     private array $items;
 
     /** @var ServerRequestFactoryInterface */
@@ -36,8 +38,14 @@ class Router
     /** @var ResponseFactoryInterface */
     private ResponseFactoryInterface $responseFactory;
 
+    /** @var MiddlewareFactory */
+    private MiddlewareFactory $middlewareFactory;
+
     /** @var EmitterInterface */
     private EmitterInterface $emitter;
+
+    /** @var MiddlewareInterface[] */
+    private array $middlewares;
 
     /**
      * Router constructor.
@@ -50,28 +58,40 @@ class Router
         ServerRequestFactoryInterface $requestFactory,
         ResponseFactoryInterface $responseFactory,
         EmitterInterface $emitter
-    )
-    {
+    ) {
         $this->requestFactory = $requestFactory;
         $this->responseFactory = $responseFactory;
         $this->emitter = $emitter;
+        $this->middlewares = [];
+        $this->middlewareFactory = new MiddlewareFactory();
+    }
+
+    /**
+     * @param callable|MiddlewareInterface|Closure $middleware
+     * @return $this
+     */
+    public function add(callable|MiddlewareInterface|Closure $middleware): self
+    {
+        $this->middlewares[] = $middleware;
+
+        return $this;
     }
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function get(string $path, callable $callback): void
+    public function get(string $path, callable ...$callback): void
     {
-        $this->add('GET', $path, $callback);
+        $this->pushRule('GET', $path, ...$callback);
     }
 
     /**
      * @param string   $method
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    private function add(string $method, string $path, callable $callback): void
+    private function pushRule(string $method, string $path, callable ...$callback): void
     {
         $method = $this->normalizeMethod($method);
         $this->items[$method][$path] = $callback;
@@ -88,67 +108,67 @@ class Router
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function all(string $path, callable $callback): void
+    public function all(string $path, callable ...$callback): void
     {
         foreach (static::METHODS as $method) {
-            $this->add($method, $path, $callback);
+            $this->pushRule($method, $path, ...$callback);
         }
     }
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function post(string $path, callable $callback): void
+    public function post(string $path, callable ...$callback): void
     {
-        $this->add('POST', $path, $callback);
+        $this->pushRule('POST', $path, ...$callback);
     }
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function head(string $path, callable $callback): void
+    public function head(string $path, callable ...$callback): void
     {
-        $this->add('HEAD', $path, $callback);
+        $this->pushRule('HEAD', $path, ...$callback);
     }
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function patch(string $path, callable $callback): void
+    public function patch(string $path, callable ...$callback): void
     {
-        $this->add('PATCH', $path, $callback);
+        $this->pushRule('PATCH', $path, ...$callback);
     }
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function options(string $path, callable $callback): void
+    public function options(string $path, callable ...$callback): void
     {
-        $this->add('OPTIONS', $path, $callback);
+        $this->pushRule('OPTIONS', $path, ...$callback);
     }
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function delete(string $path, callable $callback): void
+    public function delete(string $path, callable ...$callback): void
     {
-        $this->add('DELETE', $path, $callback);
+        $this->pushRule('DELETE', $path, ...$callback);
     }
 
     /**
      * @param string   $path
-     * @param callable $callback
+     * @param callable ...$callback
      */
-    public function put(string $path, callable $callback): void
+    public function put(string $path, callable ...$callback): void
     {
-        $this->add('PUT', $path, $callback);
+        $this->pushRule('PUT', $path, ...$callback);
     }
 
     /**
@@ -162,21 +182,49 @@ class Router
         $method = $this->normalizeMethod($method);
         $response = $this->responseFactory->createResponse();
         $request = $this->requestFactory->createServerRequest($method, $uri, $serverParams);
+        $response = $this->handle($request, $response, $method);
 
-        $route = (new FindRoutes(
-            $request,
-            $response,
-            $this->items)
-        )->find($method, $request->getUri()->getPath());
-
-        $response = $route->call();
-
-        if ($response instanceof Response) {
-            // This is to be in compliance with RFC 2616, Section 9
-            if ('HEAD' === $method) {
-                $response = $response->withBody($this->responseFactory->createResponse()->getBody());
-            }
-            $this->emitter->emit($response);
+        if ('HEAD' === $method) {
+            $response = $response->withBody($this->responseFactory->createResponse()->getBody());
         }
+
+        $this->emitter->emit($response);
+    }
+
+    /**
+     * @param $request
+     * @param $response
+     * @param $method
+     * @return ResponseInterface
+     * @throws RouteNotFoundException
+     */
+    private function handle($request, $response, $method): ResponseInterface
+    {
+        $findRoute = new FindRoutes($this->middlewareFactory, $this->items);
+
+        $item = $findRoute->find($method, $request->getUri()->getPath());
+
+        $middlewareDispatcher = new MiddlewareDispatcher(
+            $response,
+            ...array_reverse($item->middleware()),
+            ...array_reverse($this->createMiddlewareWithParams($item->params()))
+        );
+
+        return $item->handle($request, $middlewareDispatcher->handle($request));
+    }
+
+    /**
+     * @param array $params
+     * @return MiddlewareInterface[]
+     */
+    private function createMiddlewareWithParams(array $params = []): array
+    {
+        foreach ($this->middlewares as $index => $middleware) {
+            if (!$middleware instanceof MiddlewareInterface) {
+                $this->middlewares[$index] = $this->middlewareFactory->create($middleware, $params);
+            }
+        }
+
+        return $this->middlewares;
     }
 }

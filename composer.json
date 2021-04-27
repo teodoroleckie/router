@@ -10,6 +10,16 @@
       "email": "teodoroleckie@gmail.com"
     }
   ],
+  "keywords": [
+    "tleckie",
+    "routes",
+    "router",
+    "routing",
+    "php",
+    "psr-7",
+    "psr-17",
+    "psr-15"
+  ],
   "autoload": {
     "psr-4": {
       "Tleckie\\Router\\": "src/"
@@ -21,13 +31,14 @@
     }
   },
   "provide": {
-
   },
   "require": {
     "php": "^8",
     "httpsoft/http-emitter": "^1.0",
     "httpsoft/http-message": "^1.0",
     "psr/http-factory": "^1.0",
+    "psr/http-server-handler": "^1.0",
+    "psr/http-server-middleware": "^1.0",
     "psr/log": "^1.1"
   },
   "require-dev": {
@@ -43,6 +54,15 @@
     "bin-dir": "bin"
   },
   "scripts": {
-    "php-cs-fixer": "php-cs-fixer --rules=@PSR1"
+    "fix-src": "./bin/php-cs-fixer fix src/ ",
+    "fix-tests": "./bin/php-cs-fixer fix tests/",
+    "tests": "./bin/phpunit ./tests/",
+    "infection": "infection",
+    "check": [
+      "@fix-src",
+      "@fix-tests",
+      "@tests",
+      "@infection"
+    ]
   }
 }
