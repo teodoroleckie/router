@@ -3,6 +3,7 @@
 namespace Tleckie\Router;
 
 use Tleckie\Router\Exception\RouteNotFoundException;
+use Closure;
 use function array_pop;
 use function is_numeric;
 use function preg_match_all;
