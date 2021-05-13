@@ -1,7 +1,7 @@
 {
   "name": "tleckie/router",
   "license": "MIT",
-  "description": "Simple router PSR-7, PSR-17",
+  "description": "Simple and fast router PSR-7, PSR-17, PSR-15",
   "type": "library",
   "homepage": "https://github.com/teodoroleckie/router",
   "authors": [
